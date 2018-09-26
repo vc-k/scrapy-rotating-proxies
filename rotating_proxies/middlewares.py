@@ -140,11 +140,12 @@ class RotatingProxyMiddleware(object):
                 logger.warn("No proxies available; marking all proxies "
                             "as unchecked")
                 self.proxies.reset()
+                self.reload_proxies()
                 proxy = self.proxies.get_random()
-                if proxy is None:
-                    logger.error("No proxies available even after a reset.")
-                    # raise CloseSpider("no_proxies_after_reset")
-                    self.reload_proxies()
+                # if proxy is None:
+                #     logger.error("No proxies available even after a reset.")
+                #     # raise CloseSpider("no_proxies_after_reset")
+                #     self.reload_proxies()
 
         request.meta['proxy'] = proxy
         request.meta['download_slot'] = self.get_proxy_slot(proxy)
