@@ -166,13 +166,14 @@ class RotatingProxyMiddleware(object):
         return self._handle_result(request, spider) or response
 
     def _handle_result(self, request, spider, exception=None):
-        if exception is not None:
-            logger.info('EXCEPTION:' + str(exception))
-            ban = True
         proxy = self.proxies.get_proxy(request.meta.get('proxy', None))
         if not (proxy and request.meta.get('_rotating_proxy')):
             return
         ban = request.meta.get('_ban', None)
+        if exception is not None:
+            logger.info('EXCEPTION:' + str(exception))
+            ban = True
+
         if ban is True:
             self.proxies.mark_dead(proxy)
             return self._retry(request, spider)
