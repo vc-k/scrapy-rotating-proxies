@@ -166,7 +166,8 @@ class RotatingProxyMiddleware(object):
         return self._handle_result(request, spider) or response
 
     def _handle_result(self, request, spider, exception=None):
-        logger.info('EXCEPTION')
+        if exception is not None:
+            logger.info('EXCEPTION:' + str(exception))
         proxy = self.proxies.get_proxy(request.meta.get('proxy', None))
         if not (proxy and request.meta.get('_rotating_proxy')):
             return
