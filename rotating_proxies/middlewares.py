@@ -85,6 +85,7 @@ class RotatingProxyMiddleware(object):
 
     @classmethod
     def from_crawler(cls, crawler):
+        logger.info('VELI')
         s = crawler.settings
         proxy_path = s.get('ROTATING_PROXY_LIST_PATH', None)
         if proxy_path is not None:
