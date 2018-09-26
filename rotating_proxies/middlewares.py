@@ -160,12 +160,13 @@ class RotatingProxyMiddleware(object):
         return urlsplit(proxy).hostname
 
     def process_exception(self, request, exception, spider):
-        return self._handle_result(request, spider)
+        return self._handle_result(request, spider, exception)
 
     def process_response(self, request, response, spider):
         return self._handle_result(request, spider) or response
 
-    def _handle_result(self, request, spider):
+    def _handle_result(self, request, spider, exception=None):
+        logger.info('EXCEPTION')
         proxy = self.proxies.get_proxy(request.meta.get('proxy', None))
         if not (proxy and request.meta.get('_rotating_proxy')):
             return
