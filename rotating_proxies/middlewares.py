@@ -64,7 +64,7 @@ class RotatingProxyMiddleware(object):
       Default is 3600 (i.e. 60 min).
     """
     def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,
-                 max_proxies_to_try, backoff_base, backoff_cap):
+                 max_proxies_to_try, backoff_base, backoff_cap, proxy_path=None):
 
         backoff = partial(exp_backoff_full_jitter, base=backoff_base, cap=backoff_cap)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
@@ -73,6 +73,15 @@ class RotatingProxyMiddleware(object):
         self.reanimate_interval = 5
         self.stop_if_no_proxies = stop_if_no_proxies
         self.max_proxies_to_try = max_proxies_to_try
+        self.proxy_path = proxy_path
+
+    def read_proxies(self):
+        with codecs.open(self.proxy_path, 'r', encoding='utf8') as f:
+            return [line.strip() for line in f if line.strip()]
+
+    def reload_proxies(self):
+        proxy_list = self.read_proxies()
+        self.proxies.reload_proxies(proxy_list)
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -91,7 +100,8 @@ class RotatingProxyMiddleware(object):
             stop_if_no_proxies=s.getbool('ROTATING_PROXY_CLOSE_SPIDER', False),
             max_proxies_to_try=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
             backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300),
-            backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600)
+            backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600),
+            proxy_path=proxy_path
         )
         crawler.signals.connect(mw.engine_started,
                                 signal=signals.engine_started)
@@ -123,7 +133,8 @@ class RotatingProxyMiddleware(object):
         proxy = self.proxies.get_random()
         if not proxy:
             if self.stop_if_no_proxies:
-                raise CloseSpider("no_proxies")
+                # raise CloseSpider("no_proxies")
+                self.reload_proxies()
             else:
                 logger.warn("No proxies available; marking all proxies "
                             "as unchecked")
@@ -131,7 +142,8 @@ class RotatingProxyMiddleware(object):
                 proxy = self.proxies.get_random()
                 if proxy is None:
                     logger.error("No proxies available even after a reset.")
-                    raise CloseSpider("no_proxies_after_reset")
+                    # raise CloseSpider("no_proxies_after_reset")
+                    self.reload_proxies()
 
         request.meta['proxy'] = proxy
         request.meta['download_slot'] = self.get_proxy_slot(proxy)

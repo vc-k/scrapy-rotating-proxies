@@ -46,6 +46,19 @@ class Proxies(object):
             backoff = exp_backoff_full_jitter
         self.backoff = backoff
 
+    def reload_proxies(self, proxy_list):
+        proxies = {url: ProxyState() for url in proxy_list}
+        new_proxy_keys = [x for x in list(proxies.keys()) if x not in list(self.proxies.keys())]
+        new_proxies = {new: proxies.get(new) for new in new_proxy_keys}
+        self.proxies.update(new_proxies)
+
+        self.proxies_by_hostport.update({
+            extract_proxy_hostport(proxy): proxy
+            for proxy in new_proxies
+        })
+
+        self.unchecked.update(new_proxies.keys())
+
     def get_random(self):
         """ Return a random available proxy (either good or unchecked) """
         available = list(self.unchecked | self.good)
