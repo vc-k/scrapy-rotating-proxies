@@ -119,6 +119,8 @@ class RotatingProxyMiddleware(object):
         if self.reanimation_enabled:
             self.reanimate_task = task.LoopingCall(self.reanimate_proxies)
             self.reanimate_task.start(self.reanimate_interval, now=False)
+        else:
+            self.reanimate_task = None
 
     def reanimate_proxies(self):
         n_reanimated = self.proxies.reanimate()
@@ -129,8 +131,9 @@ class RotatingProxyMiddleware(object):
     def engine_stopped(self):
         if self.log_task.running:
             self.log_task.stop()
-        if self.reanimate_task.running:
-            self.reanimate_task.stop()
+        if self.reanimate_task:
+            if self.reanimate_task.running:
+                self.reanimate_task.stop()
 
     def process_request(self, request, spider):
         if 'proxy' in request.meta and not request.meta.get('_rotating_proxy'):
