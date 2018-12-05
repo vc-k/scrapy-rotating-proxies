@@ -64,7 +64,8 @@ class RotatingProxyMiddleware(object):
       Default is 3600 (i.e. 60 min).
     """
     def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,
-                 max_proxies_to_try, backoff_base, backoff_cap, proxy_path=None):
+                 max_proxies_to_try, backoff_base, backoff_cap, proxy_path=None,
+                 reanimation_enabled=True):
 
         backoff = partial(exp_backoff_full_jitter, base=backoff_base, cap=backoff_cap)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
@@ -74,6 +75,7 @@ class RotatingProxyMiddleware(object):
         self.stop_if_no_proxies = stop_if_no_proxies
         self.max_proxies_to_try = max_proxies_to_try
         self.proxy_path = proxy_path
+        self.reanimation_enabled = reanimation_enabled
 
     def read_proxies(self):
         with codecs.open(self.proxy_path, 'r', encoding='utf8') as f:
@@ -102,7 +104,8 @@ class RotatingProxyMiddleware(object):
             max_proxies_to_try=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
             backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300),
             backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600),
-            proxy_path=proxy_path
+            proxy_path=proxy_path,
+            reanimation_enabled=s.getbool('REANIMATION_ENABLED', True)
         )
         crawler.signals.connect(mw.engine_started,
                                 signal=signals.engine_started)
@@ -113,8 +116,9 @@ class RotatingProxyMiddleware(object):
     def engine_started(self):
         self.log_task = task.LoopingCall(self.log_stats)
         self.log_task.start(self.logstats_interval, now=True)
-        self.reanimate_task = task.LoopingCall(self.reanimate_proxies)
-        self.reanimate_task.start(self.reanimate_interval, now=False)
+        if self.reanimation_enabled:
+            self.reanimate_task = task.LoopingCall(self.reanimate_proxies)
+            self.reanimate_task.start(self.reanimate_interval, now=False)
 
     def reanimate_proxies(self):
         n_reanimated = self.proxies.reanimate()
